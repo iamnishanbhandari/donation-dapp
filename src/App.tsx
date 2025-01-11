@@ -184,17 +184,17 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-md">
+    <div className="min-h-screen bg-gradient-to-r from-purple-800 via-indigo-900 to-blue-800 backdrop-blur-xl bg-opacity-40">
+      <nav className="bg-gradient-to-r from-purple-900 via-indigo-900 to-gray-900 bg-opacity-80 backdrop-blur-md shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-white tracking-wide">
             Web3 Crowdfunding
           </h1>
           <div className="flex gap-4">
             {account && (
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:from-green-600 hover:to-green-800 transition-colors backdrop-blur-lg bg-opacity-80"
               >
                 <PlusCircle className="w-5 h-5" />
                 Create Campaign
@@ -202,7 +202,7 @@ function App() {
             )}
             <button
               onClick={connectWallet}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-800 transition-colors backdrop-blur-lg bg-opacity-80"
             >
               <Wallet className="w-5 h-5" />
               {account
@@ -215,11 +215,13 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {showForm && (
-          <div className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Create New Campaign</h2>
+          <div className="mb-8 bg-gradient-to-r from-gray-800 via-gray-900 to-black bg-opacity-90 p-6 rounded-lg shadow-xl backdrop-blur-md">
+            <h2 className="text-xl font-semibold mb-4 text-white">
+              Create New Campaign
+            </h2>
             <form onSubmit={handleCreateCampaign} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-300">
                   Title
                 </label>
                 <input
@@ -228,12 +230,12 @@ function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-300">
                   Description
                 </label>
                 <textarea
@@ -241,13 +243,13 @@ function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   rows={3}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-300">
                   Target Amount (ETH)
                 </label>
                 <input
@@ -257,12 +259,12 @@ function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, target: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-300">
                   Deadline
                 </label>
                 <input
@@ -271,12 +273,12 @@ function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, deadline: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-300">
                   Image URL
                 </label>
                 <input
@@ -285,21 +287,21 @@ function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, image: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-800 transition-colors"
                 >
                   Create Campaign
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  className="bg-gradient-to-r from-gray-600 to-gray-800 text-white px-4 py-2 rounded-lg shadow-md hover:from-gray-700 hover:to-gray-900 transition-colors"
                 >
                   Cancel
                 </button>
@@ -309,8 +311,8 @@ function App() {
         )}
 
         {!account && (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600">
+          <div className="text-center py-12 bg-gradient-to-r from-gray-800 via-gray-900 to-black bg-opacity-90 rounded-lg shadow-xl backdrop-blur-md">
+            <p className="text-gray-300 text-lg">
               Please connect your wallet to view campaigns
             </p>
           </div>
@@ -319,19 +321,19 @@ function App() {
         {account && loading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading campaigns...</p>
+            <p className="mt-4 text-gray-300 text-lg">Loading campaigns...</p>
           </div>
         )}
 
         {account && error && (
-          <div className="text-center py-12 bg-red-50 rounded-lg">
-            <p className="text-red-600">{error}</p>
+          <div className="text-center py-12 bg-gradient-to-r from-red-800 via-red-900 to-black bg-opacity-90 rounded-lg shadow-xl backdrop-blur-md">
+            <p className="text-red-400 text-lg font-semibold">{error}</p>
           </div>
         )}
 
         {account && !loading && !error && campaigns.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600">
+          <div className="text-center py-12 bg-gradient-to-r from-gray-800 via-gray-900 to-black bg-opacity-90 rounded-lg shadow-xl backdrop-blur-md">
+            <p className="text-gray-300 text-lg">
               No campaigns found. Create one to get started!
             </p>
           </div>
@@ -342,7 +344,7 @@ function App() {
             {campaigns.map((campaign) => (
               <div
                 key={campaign.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden"
+                className="bg-gradient-to-r from-gray-800 via-gray-900 to-black bg-opacity-90 rounded-lg shadow-xl overflow-hidden backdrop-blur-md transition-transform transform hover:scale-105"
               >
                 <img
                   src={
@@ -350,18 +352,18 @@ function App() {
                     "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"
                   }
                   alt={campaign.title}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-48 object-cover rounded-t-lg"
                 />
                 <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-100 mb-2">
                     {campaign.title}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4">
+                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
                     {campaign.description}
                   </p>
 
-                  <div className="flex items-center gap-2 text-sm mb-3">
-                    <Clock className="w-4 h-4 text-blue-600" />
+                  <div className="flex items-center gap-2 text-sm mb-3 text-gray-400">
+                    <Clock className="w-4 h-4 text-blue-400" />
                     <span className="font-medium">
                       Time left: {getTimeLeft(campaign.deadline)}
                     </span>
@@ -371,32 +373,41 @@ function App() {
                     <div>
                       <p className="text-sm text-gray-500">Target</p>
                       <div className="flex items-center gap-1">
-                        <Target className="w-4 h-4 text-gray-600" />
-                        <p className="font-semibold">{campaign.target} ETH</p>
+                        <Target className="w-4 h-4 text-blue-400" />
+                        <p className="font-semibold text-gray-200">
+                          {campaign.target} ETH
+                        </p>
                       </div>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Raised</p>
-                      <p className="font-semibold text-right">
+                      <p className="font-semibold text-gray-200 text-right">
                         {campaign.amountCollected} ETH
                       </p>
                     </div>
                   </div>
 
-                  <div className="mb-4">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{
-                          width: `${Math.min(
-                            (Number(campaign.amountCollected) /
-                              Number(campaign.target)) *
-                              100,
-                            100
-                          )}%`,
-                        }}
-                      ></div>
-                    </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Raised</p>
+                    <p className="font-semibold text-right">
+                      {campaign.amountCollected} ETH
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          (Number(campaign.amountCollected) /
+                            Number(campaign.target)) *
+                            100,
+                          100
+                        )}%`,
+                      }}
+                    ></div>
                   </div>
 
                   <div className="space-y-2">
@@ -407,27 +418,29 @@ function App() {
                           Number(campaign.target)) && (
                         <button
                           onClick={() => handleClaimFunds(campaign)}
-                          className="w-full py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center justify-center gap-2"
+                          className="w-full py-2 px-4 rounded-lg bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-transform transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
                         >
                           <AlertCircle className="w-4 h-4" />
-                          Claim Funds Now
+                          <span className="font-semibold">Claim Funds Now</span>
                         </button>
                       )}
 
                     <button
-                      className={`w-full py-2 px-4 rounded-lg transition-colors ${
+                      className={`w-full py-2 px-4 rounded-lg transition-transform transform ${
                         !isCampaignActive(campaign)
-                          ? "bg-gray-300 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                          ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-md"
+                          : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:scale-105"
                       }`}
                       onClick={() => handleDonate(campaign)}
                       disabled={!isCampaignActive(campaign)}
                     >
-                      {getCampaignStatus(campaign)}
+                      <span className="font-semibold">
+                        {getCampaignStatus(campaign)}
+                      </span>
                     </button>
 
                     {campaign.claimed && (
-                      <div className="text-center py-2 text-green-600 font-medium">
+                      <div className="text-center py-2 px-4 bg-green-50 rounded-lg text-green-700 font-medium shadow-md">
                         ✓ Funds Claimed
                       </div>
                     )}

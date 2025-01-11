@@ -21,6 +21,7 @@ contract CrowdFunding {
     event CampaignCreated(uint256 indexed id, address indexed owner, string title, uint256 target);
     event DonationMade(uint256 indexed id, address indexed donor, uint256 amount);
     event FundsClaimed(uint256 indexed id, address indexed owner, uint256 amount);
+    event CampaignCompleted(uint256 indexed id, uint256 totalAmount);
 
     function createCampaign(
         string memory _title,
@@ -55,11 +56,38 @@ contract CrowdFunding {
         require(!campaigns[_id].claimed, "Campaign funds have been claimed");
 
         Campaign storage campaign = campaigns[_id];
-        campaign.donors.push(msg.sender);
-        campaign.donations.push(msg.value);
-        campaign.amountCollected += msg.value;
 
-        emit DonationMade(_id, msg.sender, msg.value);
+        uint256 remainingToTarget = campaign.target - campaign.amountCollected;
+        require(remainingToTarget > 0, "Campaign target already reached");
+
+        uint256 acceptedAmount;
+        if (msg.value > remainingToTarget) {
+            acceptedAmount = remainingToTarget;
+            payable(msg.sender).transfer(msg.value - acceptedAmount);
+        } else {
+            acceptedAmount = msg.value;
+        }
+
+        campaign.donors.push(msg.sender);
+        campaign.donations.push(acceptedAmount);
+        campaign.amountCollected += acceptedAmount;
+
+        emit DonationMade(_id, msg.sender, acceptedAmount);
+
+        if (campaign.amountCollected >= campaign.target) {
+            _claimFunds(_id);
+        }
+    }
+
+    function _claimFunds(uint256 _id) internal {
+        Campaign storage campaign = campaigns[_id];
+        require(!campaign.claimed, "Funds have already been claimed");
+
+        campaign.claimed = true;
+        payable(campaign.owner).transfer(campaign.amountCollected);
+
+        emit FundsClaimed(_id, campaign.owner, campaign.amountCollected);
+        emit CampaignCompleted(_id, campaign.amountCollected);
     }
 
     function claimFunds(uint256 _id) public {
@@ -72,10 +100,7 @@ contract CrowdFunding {
             "Campaign has not ended or reached target"
         );
 
-        campaign.claimed = true;
-        payable(campaign.owner).transfer(campaign.amountCollected);
-
-        emit FundsClaimed(_id, campaign.owner, campaign.amountCollected);
+        _claimFunds(_id);
     }
 
     function getCampaign(uint256 _id) public view returns (

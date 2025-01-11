@@ -1,38 +1,6 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import {
-  Wallet,
-  PlusCircle,
-  Timer,
-  Target,
-  Rocket,
-  Shield,
-  Globe,
-  TrendingUp,
-  ChevronRight,
-  Github,
-} from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { useWeb3 } from "@/context/Web3Context";
+import React, { useEffect, useState } from "react";
+import { useWeb3 } from "./context/Web3Context";
+import { PlusCircle, Wallet, Clock, Target, AlertCircle } from "lucide-react";
 
 interface Campaign {
   id: number;
@@ -47,8 +15,18 @@ interface Campaign {
 }
 
 function App() {
-  const [showApp, setShowApp] = useState(false);
+  const {
+    account,
+    connectWallet,
+    createCampaign,
+    getCampaigns,
+    donateToCampaign,
+    claimFunds,
+  } = useWeb3();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -56,46 +34,69 @@ function App() {
     deadline: "",
     image: "",
   });
-  const [donationAmount, setDonationAmount] = useState("");
-  const { toast } = useToast();
-  const {
-    contract,
-    account,
-    connectWallet,
-    createCampaign,
-    getCampaigns,
-    donateToCampaign,
-  } = useWeb3();
 
-  useEffect(() => {
-    if (showApp) {
-      loadCampaigns();
+  const getTimeLeft = (deadline: number) => {
+    const now = Date.now();
+    const timeLeft = deadline * 1000 - now;
+
+    if (timeLeft <= 0) return "Ended";
+
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(
+      (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${days}d ${hours}h ${minutes}m`;
+  };
+
+  const handleClaimFunds = async (campaign: Campaign) => {
+    if (!account) {
+      alert("Please connect your wallet first");
+      return;
     }
-  }, [showApp, contract]);
+
+    try {
+      await claimFunds(campaign.id);
+      alert("Funds claimed successfully!");
+      await loadCampaigns();
+    } catch (err: any) {
+      console.error("Failed to claim funds:", err);
+      alert(err.message || "Failed to claim funds. Please try again.");
+    }
+  };
 
   const loadCampaigns = async () => {
     try {
-      const loadedCampaigns = await getCampaigns();
-      setCampaigns(loadedCampaigns || []);
-    } catch (error) {
-      console.error("Failed to load campaigns:", error);
+      setLoading(true);
+      setError(null);
+      const data = await getCampaigns();
+      setCampaigns(data);
+    } catch (err) {
+      setError(
+        "Failed to load campaigns. Please make sure your wallet is connected."
+      );
+      setCampaigns([]);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (account) {
+      loadCampaigns();
+    }
+  }, [account]);
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!account) {
-      toast({
-        title: "Error",
-        description: "Please connect your wallet first",
-        variant: "destructive",
-      });
+      alert("Please connect your wallet first");
       return;
     }
 
-    const deadline = new Date(formData.deadline).getTime() / 1000;
-
     try {
+      const deadline = Math.floor(new Date(formData.deadline).getTime() / 1000);
       await createCampaign(
         formData.title,
         formData.description,
@@ -103,8 +104,7 @@ function App() {
         deadline,
         formData.image
       );
-
-      // Reset form
+      setShowForm(false);
       setFormData({
         title: "",
         description: "",
@@ -112,358 +112,331 @@ function App() {
         deadline: "",
         image: "",
       });
-
-      // Reload campaigns
-      loadCampaigns();
-    } catch (error) {
-      console.error("Failed to create campaign:", error);
+      await loadCampaigns();
+    } catch (err) {
+      console.error("Failed to create campaign:", err);
+      alert("Failed to create campaign. Please try again.");
     }
   };
 
-  const handleDonate = async (campaignId: number) => {
+  const handleDonate = async (campaign: Campaign) => {
     if (!account) {
-      toast({
-        title: "Error",
-        description: "Please connect your wallet first",
-        variant: "destructive",
-      });
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    if (campaign.claimed) {
+      alert("This campaign has ended and funds have been claimed.");
+      return;
+    }
+
+    if (campaign.deadline * 1000 < Date.now()) {
+      alert("This campaign has ended.");
+      return;
+    }
+
+    const amount = prompt("Enter amount to donate (ETH):");
+    if (!amount) return;
+
+    const remainingAmount =
+      Number(campaign.target) - Number(campaign.amountCollected);
+    if (remainingAmount <= 0) {
+      alert("This campaign has reached its target amount.");
+      return;
+    }
+
+    const donationAmount = parseFloat(amount);
+    if (isNaN(donationAmount) || donationAmount <= 0) {
+      alert("Please enter a valid donation amount greater than 0 ETH");
+      return;
+    }
+    if (donationAmount > remainingAmount) {
+      alert(
+        `Maximum donation amount for this campaign is ${remainingAmount} ETH`
+      );
       return;
     }
 
     try {
-      await donateToCampaign(campaignId, donationAmount);
-      setDonationAmount("");
-      loadCampaigns();
-    } catch (error) {
-      console.error("Failed to donate:", error);
+      await donateToCampaign(campaign.id, amount);
+      alert("Thank you for your donation!");
+      await loadCampaigns();
+    } catch (err) {
+      console.error("Donation failed:", err);
+      alert("Failed to process donation. Please try again.");
     }
   };
 
-  if (!showApp) {
-    return (
-      <div className="min-h-screen bg-[#0D0F1D] text-white overflow-hidden">
-        {/* Gradient orbs */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-          <div className="absolute top-0 -left-40 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-40 left-20 w-96 h-96 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-        </div>
+  const isCampaignActive = (campaign: Campaign) => {
+    const isNotClaimed = !campaign.claimed;
+    const hasNotExpired = campaign.deadline * 1000 > Date.now();
+    const hasNotReachedTarget =
+      Number(campaign.amountCollected) < Number(campaign.target);
+    return isNotClaimed && hasNotExpired && hasNotReachedTarget;
+  };
 
-        {/* Navigation */}
-        <nav className="relative z-10 border-b border-white/10 backdrop-blur-md">
-          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Wallet className="h-6 w-6 text-blue-400" />
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                CrowdChain
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Github className="h-5 w-5 hover:text-blue-400 transition-colors" />
-              </a>
-              <Button
-                onClick={() => setShowApp(true)}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
-              >
-                Launch App
-              </Button>
-            </div>
-          </div>
-        </nav>
+  const getCampaignStatus = (campaign: Campaign) => {
+    if (campaign.claimed) return "Campaign Completed";
+    if (campaign.deadline * 1000 < Date.now()) return "Deadline Passed";
+    if (Number(campaign.amountCollected) >= Number(campaign.target))
+      return "Target Reached";
+    return "Donate";
+  };
 
-        {/* Hero Section */}
-        <section className="relative pt-20 pb-32">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-teal-400">
-                Decentralized Crowdfunding for the Future
-              </h1>
-              <p className="text-xl text-gray-400 mb-8">
-                Launch your dreams on the blockchain. Secure, transparent, and
-                community-driven fundraising platform.
-              </p>
-              <Button
-                onClick={() => setShowApp(true)}
-                size="lg"
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
-              >
-                Start Fundraising
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Features */}
-        <section className="relative py-20 border-t border-white/10">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="backdrop-blur-lg bg-white/5 rounded-2xl p-6 border border-white/10">
-                <Shield className="h-12 w-12 text-blue-400 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">
-                  Secure & Transparent
-                </h3>
-                <p className="text-gray-400">
-                  Built on blockchain technology ensuring complete transparency
-                  and security for all transactions.
-                </p>
-              </div>
-              <div className="backdrop-blur-lg bg-white/5 rounded-2xl p-6 border border-white/10">
-                <Globe className="h-12 w-12 text-purple-400 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Global Reach</h3>
-                <p className="text-gray-400">
-                  Connect with supporters worldwide and fund your projects
-                  without borders.
-                </p>
-              </div>
-              <div className="backdrop-blur-lg bg-white/5 rounded-2xl p-6 border border-white/10">
-                <TrendingUp className="h-12 w-12 text-teal-400 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Smart Contracts</h3>
-                <p className="text-gray-400">
-                  Automated and trustless fundraising with smart contract
-                  technology.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Stats Section */}
-        <section className="relative py-20 border-t border-white/10">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-              <div className="backdrop-blur-lg bg-white/5 rounded-2xl p-6 border border-white/10">
-                <div className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                  $10M+
-                </div>
-                <div className="text-gray-400 mt-2">Total Raised</div>
-              </div>
-              <div className="backdrop-blur-lg bg-white/5 rounded-2xl p-6 border border-white/10">
-                <div className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-teal-400">
-                  1000+
-                </div>
-                <div className="text-gray-400 mt-2">Successful Projects</div>
-              </div>
-              <div className="backdrop-blur-lg bg-white/5 rounded-2xl p-6 border border-white/10">
-                <div className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-blue-400">
-                  50K+
-                </div>
-                <div className="text-gray-400 mt-2">Global Backers</div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  // Main App UI (your existing app code)
   return (
-    <div className="min-h-screen bg-[#0D0F1D] text-white">
-      <header className="border-b border-white/10 backdrop-blur-md">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-blue-400" />
-            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-              CrowdChain
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            {!account ? (
-              <Button
-                onClick={connectWallet}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Web3 Crowdfunding
+          </h1>
+          <div className="flex gap-4">
+            {account && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >
-                Connect Wallet
-              </Button>
-            ) : (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create Campaign
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-[#1A1C2A] border-white/10">
-                  <DialogHeader>
-                    <DialogTitle>Create New Campaign</DialogTitle>
-                    <DialogDescription>
-                      Launch your crowdfunding campaign on the blockchain
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateCampaign} className="space-y-4">
-                    <Input
-                      placeholder="Campaign Title"
-                      className="bg-white/5 border-white/10"
-                      value={formData.title}
-                      onChange={(e) =>
-                        setFormData({ ...formData, title: e.target.value })
-                      }
-                      required
-                    />
-                    <Textarea
-                      placeholder="Campaign Description"
-                      className="bg-white/5 border-white/10"
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          description: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="Target Amount (ETH)"
-                      className="bg-white/5 border-white/10"
-                      value={formData.target}
-                      onChange={(e) =>
-                        setFormData({ ...formData, target: e.target.value })
-                      }
-                      required
-                    />
-                    <Input
-                      type="date"
-                      className="bg-white/5 border-white/10"
-                      value={formData.deadline}
-                      onChange={(e) =>
-                        setFormData({ ...formData, deadline: e.target.value })
-                      }
-                      required
-                    />
-                    <Input
-                      type="url"
-                      placeholder="Campaign Image URL"
-                      className="bg-white/5 border-white/10"
-                      value={formData.image}
-                      onChange={(e) =>
-                        setFormData({ ...formData, image: e.target.value })
-                      }
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
-                    >
-                      Launch Campaign
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                <PlusCircle className="w-5 h-5" />
+                Create Campaign
+              </button>
             )}
+            <button
+              onClick={connectWallet}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Wallet className="w-5 h-5" />
+              {account
+                ? `${account.slice(0, 6)}...${account.slice(-4)}`
+                : "Connect Wallet"}
+            </button>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {campaigns.map((campaign) => (
-            <Card
-              key={campaign.id}
-              className="backdrop-blur-lg bg-white/5 border-white/10"
-            >
-              <CardHeader>
-                <img
-                  src={campaign.image}
-                  alt={campaign.title}
-                  className="w-full h-48 object-cover rounded-lg"
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {showForm && (
+          <div className="mb-8 bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Create New Campaign</h2>
+            <form onSubmit={handleCreateCampaign} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
                 />
-                <CardTitle>{campaign.title}</CardTitle>
-                <CardDescription className="text-gray-400">
-                  {campaign.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-blue-400" />
-                      <span>{campaign.target} ETH</span>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  rows={3}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Target Amount (ETH)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.target}
+                  onChange={(e) =>
+                    setFormData({ ...formData, target: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Deadline
+                </label>
+                <input
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) =>
+                    setFormData({ ...formData, deadline: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Image URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.image}
+                  onChange={(e) =>
+                    setFormData({ ...formData, image: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Campaign
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {!account && (
+          <div className="text-center py-12 bg-white rounded-lg shadow">
+            <p className="text-gray-600">
+              Please connect your wallet to view campaigns
+            </p>
+          </div>
+        )}
+
+        {account && loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading campaigns...</p>
+          </div>
+        )}
+
+        {account && error && (
+          <div className="text-center py-12 bg-red-50 rounded-lg">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
+        {account && !loading && !error && campaigns.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-lg shadow">
+            <p className="text-gray-600">
+              No campaigns found. Create one to get started!
+            </p>
+          </div>
+        )}
+
+        {account && !loading && !error && campaigns.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {campaigns.map((campaign) => (
+              <div
+                key={campaign.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden"
+              >
+                <img
+                  src={
+                    campaign.image ||
+                    "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"
+                  }
+                  alt={campaign.title}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {campaign.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    {campaign.description}
+                  </p>
+
+                  <div className="flex items-center gap-2 text-sm mb-3">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium">
+                      Time left: {getTimeLeft(campaign.deadline)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <p className="text-sm text-gray-500">Target</p>
+                      <div className="flex items-center gap-1">
+                        <Target className="w-4 h-4 text-gray-600" />
+                        <p className="font-semibold">{campaign.target} ETH</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Timer className="h-4 w-4 text-purple-400" />
-                      <span>
-                        {new Date(
-                          campaign.deadline * 1000
-                        ).toLocaleDateString()}
-                      </span>
+                    <div>
+                      <p className="text-sm text-gray-500">Raised</p>
+                      <p className="font-semibold text-right">
+                        {campaign.amountCollected} ETH
+                      </p>
                     </div>
                   </div>
-                  <Progress
-                    value={Number(
-                      (
-                        (parseFloat(campaign.amountCollected) /
-                          parseFloat(campaign.target)) *
-                        100
-                      ).toFixed(2)
+
+                  <div className="mb-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{
+                          width: `${Math.min(
+                            (Number(campaign.amountCollected) /
+                              Number(campaign.target)) *
+                              100,
+                            100
+                          )}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {account?.toLowerCase() === campaign.owner.toLowerCase() &&
+                      !campaign.claimed &&
+                      (campaign.deadline * 1000 < Date.now() ||
+                        Number(campaign.amountCollected) >=
+                          Number(campaign.target)) && (
+                        <button
+                          onClick={() => handleClaimFunds(campaign)}
+                          className="w-full py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center justify-center gap-2"
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                          Claim Funds Now
+                        </button>
+                      )}
+
+                    <button
+                      className={`w-full py-2 px-4 rounded-lg transition-colors ${
+                        !isCampaignActive(campaign)
+                          ? "bg-gray-300 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }`}
+                      onClick={() => handleDonate(campaign)}
+                      disabled={!isCampaignActive(campaign)}
+                    >
+                      {getCampaignStatus(campaign)}
+                    </button>
+
+                    {campaign.claimed && (
+                      <div className="text-center py-2 text-green-600 font-medium">
+                        ✓ Funds Claimed
+                      </div>
                     )}
-                    className="bg-white/10"
-                  />
-                  <p className="text-sm text-gray-400">
-                    {campaign.amountCollected} ETH raised of {campaign.target}{" "}
-                    ETH
-                  </p>
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
-                      disabled={
-                        campaign.claimed ||
-                        Date.now() / 1000 > campaign.deadline
-                      }
-                    >
-                      {campaign.claimed
-                        ? "Campaign Ended"
-                        : Date.now() / 1000 > campaign.deadline
-                        ? "Deadline Passed"
-                        : "Donate"}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-[#1A1C2A] border-white/10">
-                    <DialogHeader>
-                      <DialogTitle>Make a Donation</DialogTitle>
-                      <DialogDescription>
-                        Support this campaign by donating ETH
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleDonate(campaign.id);
-                      }}
-                      className="space-y-4"
-                    >
-                      <Input
-                        type="number"
-                        placeholder="Amount (ETH)"
-                        step="0.01"
-                        className="bg-white/5 border-white/10"
-                        value={donationAmount}
-                        onChange={(e) => setDonationAmount(e.target.value)}
-                        required
-                      />
-                      <Button
-                        type="submit"
-                        className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
-                      >
-                        Confirm Donation
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );

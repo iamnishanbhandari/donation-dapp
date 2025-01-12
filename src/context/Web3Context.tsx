@@ -1,15 +1,28 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { ethers } from "ethers";
 
-// Replace with your deployed contract address and ABI
-const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Example local hardhat address
+const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 const CONTRACT_ABI = [
   "function createCampaign(string memory _title, string memory _description, uint256 _target, uint256 _deadline, string memory _image) public returns (uint256)",
   "function donateToCampaign(uint256 _id) public payable",
   "function getCampaign(uint256 _id) public view returns (address owner, string memory title, string memory description, uint256 target, uint256 deadline, uint256 amountCollected, string memory image, bool claimed)",
   "function numberOfCampaigns() public view returns (uint256)",
   "function claimFunds(uint256 _id) public",
+  "event FundsClaimed(uint256 indexed id, address indexed owner, uint256 amount)",
+  "event DonationMade(uint256 indexed id, address indexed donor, uint256 amount)",
 ];
+
+interface Campaign {
+  id: number;
+  owner: string;
+  title: string;
+  description: string;
+  target: string;
+  deadline: number;
+  amountCollected: string;
+  image: string;
+  claimed: boolean;
+}
 
 interface Web3ContextType {
   account: string | null;
@@ -22,9 +35,11 @@ interface Web3ContextType {
     deadline: number,
     image: string
   ) => Promise<void>;
-  getCampaigns: () => Promise<any[]>;
+  getCampaigns: () => Promise<Campaign[]>;
   donateToCampaign: (id: number, amount: string) => Promise<void>;
   claimFunds: (id: number) => Promise<void>;
+  isCampaignClaimable: (campaign: Campaign) => boolean;
+  isOwner: (campaign: Campaign) => boolean;
 }
 
 const Web3Context = createContext<Web3ContextType | null>(null);
@@ -76,6 +91,25 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         signer
       );
 
+      // Set up event listeners
+      crowdFundingContract.on("FundsClaimed", (id, owner, amount, event) => {
+        console.log("Funds claimed:", {
+          id: id.toString(),
+          owner,
+          amount: ethers.formatEther(amount),
+          transactionHash: event.transactionHash,
+        });
+      });
+
+      crowdFundingContract.on("DonationMade", (id, donor, amount, event) => {
+        console.log("Donation made:", {
+          id: id.toString(),
+          donor,
+          amount: ethers.formatEther(amount),
+          transactionHash: event.transactionHash,
+        });
+      });
+
       setAccount(accounts[0]);
       setContract(crowdFundingContract);
     } catch (error) {
@@ -114,13 +148,13 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       if (!contract) throw new Error("Contract not initialized");
 
       const numberOfCampaigns = await contract.numberOfCampaigns();
-      const campaigns = [];
+      const campaigns: Campaign[] = [];
 
       for (let i = 0; i < Number(numberOfCampaigns); i++) {
         const campaign = await contract.getCampaign(i);
         campaigns.push({
           id: i,
-          owner: campaign[0],
+          owner: campaign[0].toLowerCase(), // Normalize address for comparison
           title: campaign[1],
           description: campaign[2],
           target: ethers.formatEther(campaign[3]),
@@ -142,9 +176,36 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     try {
       if (!contract) throw new Error("Contract not initialized");
 
+      // Get campaign details before donation
+      const campaign = await contract.getCampaign(id);
+      const currentAmount = ethers.formatEther(campaign[5]);
+      const target = ethers.formatEther(campaign[3]);
+
+      console.log("Pre-donation:", {
+        currentAmount,
+        target,
+        willReachTarget:
+          parseFloat(currentAmount) + parseFloat(amount) >= parseFloat(target),
+      });
+
+      // Execute donation
       const parsedAmount = ethers.parseEther(amount);
       const tx = await contract.donateToCampaign(id, { value: parsedAmount });
-      await tx.wait();
+      const receipt = await tx.wait();
+
+      // Log transaction details
+      console.log("Donation transaction:", {
+        hash: receipt.hash,
+        gasUsed: receipt.gasUsed.toString(),
+        status: receipt.status,
+      });
+
+      // Get updated campaign details
+      const updatedCampaign = await contract.getCampaign(id);
+      console.log("Post-donation:", {
+        amountCollected: ethers.formatEther(updatedCampaign[5]),
+        claimed: updatedCampaign[7],
+      });
     } catch (error) {
       console.error("Failed to donate:", error);
       throw error;
@@ -155,16 +216,42 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     try {
       if (!contract) throw new Error("Contract not initialized");
 
+      const campaign = (await getCampaigns())[id];
+      if (!isOwner(campaign)) {
+        throw new Error("Only the campaign owner can claim funds");
+      }
+      if (!isCampaignClaimable(campaign)) {
+        throw new Error("Campaign is not claimable yet");
+      }
+
       const tx = await contract.claimFunds(id);
-      await tx.wait();
+      const receipt = await tx.wait();
+
+      console.log("Claim transaction:", {
+        hash: receipt.hash,
+        gasUsed: receipt.gasUsed.toString(),
+        status: receipt.status,
+      });
     } catch (error) {
       console.error("Failed to claim funds:", error);
       throw error;
     }
   };
 
-  const isCampaignActive = (campaign: Campaign) => {
-    return !campaign.claimed && campaign.deadline * 1000 > Date.now();
+  const isCampaignClaimable = (campaign: Campaign) => {
+    const now = Date.now();
+    const deadlineReached = now > campaign.deadline * 1000;
+    const hasBalance = parseFloat(campaign.amountCollected) > 0;
+    const targetReached =
+      parseFloat(campaign.amountCollected) >= parseFloat(campaign.target);
+
+    return (
+      !campaign.claimed && hasBalance && (deadlineReached || targetReached)
+    );
+  };
+
+  const isOwner = (campaign: Campaign) => {
+    return account?.toLowerCase() === campaign.owner.toLowerCase();
   };
 
   return (
@@ -177,6 +264,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         getCampaigns,
         donateToCampaign,
         claimFunds,
+        isCampaignClaimable,
+        isOwner,
       }}
     >
       {children}

@@ -154,7 +154,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         const campaign = await contract.getCampaign(i);
         campaigns.push({
           id: i,
-          owner: campaign[0].toLowerCase(), // Normalize address for comparison
+          owner: campaign[0].toLowerCase(),
           title: campaign[1],
           description: campaign[2],
           target: ethers.formatEther(campaign[3]),

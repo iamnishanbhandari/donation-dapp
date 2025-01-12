@@ -184,17 +184,15 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-purple-800 via-indigo-900 to-blue-800 backdrop-blur-xl bg-opacity-40">
-      <nav className="bg-gradient-to-r from-purple-900 via-indigo-900 to-gray-900 bg-opacity-80 backdrop-blur-md shadow-md">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-purple-900 to-slate-900">
+      <nav className="glass-nav fixed w-full z-50 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white tracking-wide">
-            Web3 Crowdfunding
-          </h1>
+          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600"></h1>
           <div className="flex gap-4">
             {account && (
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:from-green-600 hover:to-green-800 transition-colors backdrop-blur-lg bg-opacity-80"
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-xl hover:opacity-90 transition-all duration-200 shadow-lg shadow-purple-500/20"
               >
                 <PlusCircle className="w-5 h-5" />
                 Create Campaign
@@ -202,7 +200,7 @@ function App() {
             )}
             <button
               onClick={connectWallet}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-800 transition-colors backdrop-blur-lg bg-opacity-80"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-xl hover:opacity-90 transition-all duration-200 shadow-lg shadow-blue-500/20"
             >
               <Wallet className="w-5 h-5" />
               {account
@@ -213,13 +211,28 @@ function App() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
         {showForm && (
-          <div className="mb-8 bg-gradient-to-r from-gray-800 via-gray-900 to-black bg-opacity-90 p-6 rounded-lg shadow-xl backdrop-blur-md">
-            <h2 className="text-xl font-semibold mb-4 text-white">
+          <div className="glass-card mb-8 p-6 rounded-2xl shadow-xl">
+            <h2 className="text-xl font-semibold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
               Create New Campaign
             </h2>
             <form onSubmit={handleCreateCampaign} className="space-y-4">
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-xl hover:opacity-90 transition-all duration-200 shadow-lg shadow-purple-500/20"
+                >
+                  Create Campaign
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-2 rounded-xl hover:opacity-90 transition-all duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300">
                   Title
@@ -344,7 +357,7 @@ function App() {
             {campaigns.map((campaign) => (
               <div
                 key={campaign.id}
-                className="bg-gradient-to-r from-gray-800 via-gray-900 to-black bg-opacity-90 rounded-lg shadow-xl overflow-hidden backdrop-blur-md transition-transform transform hover:scale-105"
+                className="glass-card rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] duration-200"
               >
                 <img
                   src={
@@ -352,65 +365,50 @@ function App() {
                     "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"
                   }
                   alt={campaign.title}
-                  className="w-full h-48 object-cover rounded-t-lg"
+                  className="w-full h-48 object-cover"
                 />
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-100 mb-2">
+                <div className="p-6 space-y-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">
                     {campaign.title}
                   </h3>
-                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                  <p className="text-gray-300 text-sm line-clamp-2">
                     {campaign.description}
                   </p>
 
-                  <div className="flex items-center gap-2 text-sm mb-3 text-gray-400">
-                    <Clock className="w-4 h-4 text-blue-400" />
-                    <span className="font-medium">
-                      Time left: {getTimeLeft(campaign.deadline)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center mb-3">
-                    <div>
-                      <p className="text-sm text-gray-500">Target</p>
-                      <div className="flex items-center gap-1">
-                        <Target className="w-4 h-4 text-blue-400" />
-                        <p className="font-semibold text-gray-200">
-                          {campaign.target} ETH
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Raised</p>
-                      <p className="font-semibold text-gray-200 text-right">
-                        {campaign.amountCollected} ETH
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500">Raised</p>
-                    <p className="font-semibold text-right">
-                      {campaign.amountCollected} ETH
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{
-                        width: `${Math.min(
-                          (Number(campaign.amountCollected) /
-                            Number(campaign.target)) *
-                            100,
-                          100
-                        )}%`,
-                      }}
-                    ></div>
+                  <div className="flex items-center gap-2 text-sm text-gray-300">
+                    <Clock className="w-4 h-4 text-purple-400" />
+                    <span>{getTimeLeft(campaign.deadline)}</span>
                   </div>
 
                   <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Target</span>
+                      <span className="text-white font-medium">
+                        {campaign.target} ETH
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Raised</span>
+                      <span className="text-white font-medium">
+                        {campaign.amountCollected} ETH
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-700/50 rounded-full h-2 mt-2">
+                      <div
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(
+                            (Number(campaign.amountCollected) /
+                              Number(campaign.target)) *
+                              100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-4 space-y-3">
                     {account?.toLowerCase() === campaign.owner.toLowerCase() &&
                       !campaign.claimed &&
                       (campaign.deadline * 1000 < Date.now() ||
@@ -418,36 +416,51 @@ function App() {
                           Number(campaign.target)) && (
                         <button
                           onClick={() => handleClaimFunds(campaign)}
-                          className="w-full py-2 px-4 rounded-lg bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-transform transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
+                          className="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90 transition-all duration-200 shadow-lg shadow-green-500/20"
                         >
-                          <AlertCircle className="w-4 h-4" />
-                          <span className="font-semibold">Claim Funds Now</span>
+                          <span className="font-medium">Claim Funds</span>
                         </button>
                       )}
 
                     <button
-                      className={`w-full py-2 px-4 rounded-lg transition-transform transform ${
+                      className={`w-full py-2 px-4 rounded-xl transition-all duration-200 ${
                         !isCampaignActive(campaign)
-                          ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-md"
-                          : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:scale-105"
+                          ? "bg-gray-700/50 text-gray-400 cursor-not-allowed"
+                          : "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 shadow-lg shadow-purple-500/20"
                       }`}
                       onClick={() => handleDonate(campaign)}
                       disabled={!isCampaignActive(campaign)}
                     >
-                      <span className="font-semibold">
+                      <span className="font-medium">
                         {getCampaignStatus(campaign)}
                       </span>
                     </button>
-
-                    {campaign.claimed && (
-                      <div className="text-center py-2 px-4 bg-green-50 rounded-lg text-green-700 font-medium shadow-md">
-                        ✓ Funds Claimed
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Loading and Error States */}
+        {!account && (
+          <div className="glass-card text-center py-12 rounded-2xl">
+            <p className="text-gray-300 text-lg">
+              Please connect your wallet to view campaigns
+            </p>
+          </div>
+        )}
+
+        {account && loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+            <p className="mt-4 text-gray-300 text-lg">Loading campaigns...</p>
+          </div>
+        )}
+
+        {account && error && (
+          <div className="glass-card text-center py-12 rounded-2xl">
+            <p className="text-red-400 text-lg font-medium">{error}</p>
           </div>
         )}
       </main>

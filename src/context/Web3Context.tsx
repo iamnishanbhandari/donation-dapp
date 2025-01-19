@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { ethers } from "ethers";
+import { CampaignAlgorithms } from "../algorithms/CampaignAlgorithm";
+import type { Campaign, Web3ContextType } from "../types";
 
 const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 const CONTRACT_ABI = [
@@ -12,41 +14,12 @@ const CONTRACT_ABI = [
   "event DonationMade(uint256 indexed id, address indexed donor, uint256 amount)",
 ];
 
-interface Campaign {
-  id: number;
-  owner: string;
-  title: string;
-  description: string;
-  target: string;
-  deadline: number;
-  amountCollected: string;
-  image: string;
-  claimed: boolean;
-}
-
-interface Web3ContextType {
-  account: string | null;
-  contract: ethers.Contract | null;
-  connectWallet: () => Promise<void>;
-  createCampaign: (
-    title: string,
-    description: string,
-    target: string,
-    deadline: number,
-    image: string
-  ) => Promise<void>;
-  getCampaigns: () => Promise<Campaign[]>;
-  donateToCampaign: (id: number, amount: string) => Promise<void>;
-  claimFunds: (id: number) => Promise<void>;
-  isCampaignClaimable: (campaign: Campaign) => boolean;
-  isOwner: (campaign: Campaign) => boolean;
-}
-
 const Web3Context = createContext<Web3ContextType | null>(null);
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [account, setAccount] = useState<string | null>(null);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   useEffect(() => {
     if (window.ethereum) {
@@ -91,7 +64,6 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         signer
       );
 
-      // Set up event listeners
       crowdFundingContract.on("FundsClaimed", (id, owner, amount, event) => {
         console.log("Funds claimed:", {
           id: id.toString(),
@@ -176,7 +148,6 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     try {
       if (!contract) throw new Error("Contract not initialized");
 
-      // Get campaign details before donation
       const campaign = await contract.getCampaign(id);
       const currentAmount = ethers.formatEther(campaign[5]);
       const target = ethers.formatEther(campaign[3]);
@@ -188,19 +159,16 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           parseFloat(currentAmount) + parseFloat(amount) >= parseFloat(target),
       });
 
-      // Execute donation
       const parsedAmount = ethers.parseEther(amount);
       const tx = await contract.donateToCampaign(id, { value: parsedAmount });
       const receipt = await tx.wait();
 
-      // Log transaction details
       console.log("Donation transaction:", {
         hash: receipt.hash,
         gasUsed: receipt.gasUsed.toString(),
         status: receipt.status,
       });
 
-      // Get updated campaign details
       const updatedCampaign = await contract.getCampaign(id);
       console.log("Post-donation:", {
         amountCollected: ethers.formatEther(updatedCampaign[5]),
@@ -254,6 +222,28 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     return account?.toLowerCase() === campaign.owner.toLowerCase();
   };
 
+  const fetchAndCacheCampaigns = async () => {
+    try {
+      if (!contract) throw new Error("Contract not initialized");
+      const fetchedCampaigns = await getCampaigns();
+      setCampaigns(fetchedCampaigns);
+      return fetchedCampaigns;
+    } catch (error) {
+      console.error("Failed to fetch campaigns:", error);
+      throw error;
+    }
+  };
+
+  const getSimilarCampaigns = async (campaignId: number) => {
+    const currentCampaigns = await fetchAndCacheCampaigns();
+    const targetCampaign = currentCampaigns.find((c) => c.id === campaignId);
+    if (!targetCampaign) throw new Error("Campaign not found");
+    return CampaignAlgorithms.findSimilarCampaigns(
+      currentCampaigns,
+      targetCampaign
+    );
+  };
+
   return (
     <Web3Context.Provider
       value={{
@@ -266,6 +256,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         claimFunds,
         isCampaignClaimable,
         isOwner,
+        getSimilarCampaigns,
       }}
     >
       {children}

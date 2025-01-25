@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useWeb3 } from "./context/Web3Context";
-import { testCampaigns } from "./testCampaigns";
-import { SimilarCampaigns } from "./SimilarCampaigns";
-import { BlockExplorer } from "./BlockExplorer";
-import { AlgorithmDemo } from "./AlgorithmDemo";
 import { CampaignGrid } from "./CampaignGrid";
-import { CampaignCard } from "./CampaignCard";
-import { CampaignGrouping } from "./algorithms/CampaignGroups";
-import { CampaignGroups } from "./CampaignGroup";
+
 import { Campaign, Transaction } from "./types";
 import {
   PlusCircle,
@@ -611,12 +605,12 @@ function App() {
             />
           ))} */}
 
-          {account && !loading && !error && campaigns.length > 0 && (
+          {/* {account && !loading && !error && campaigns.length > 0 && (
             <CampaignGroups
               campaigns={campaigns}
               onCampaignClick={handleCampaignClick}
             />
-          )}
+          )} */}
         </main>
       </div>
     </div>

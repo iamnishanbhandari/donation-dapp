@@ -98,7 +98,7 @@ export function CampaignGrid({
     <div className="space-y-12">
       {groups.map((group, index) => (
         <div key={index}>
-          <h2 className="text-xl font-semibold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+          <h2 className="text-xl font-semibold mb-6 text-white mt-6">
             Campaign Group {index + 1}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -121,7 +121,7 @@ export function CampaignGrid({
 
       {other.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+          <h2 className="text-xl font-semibold mb-6 text-white mt-6">
             Other Campaigns
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

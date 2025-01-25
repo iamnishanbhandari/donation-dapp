@@ -48,7 +48,6 @@ export function CampaignCard({
 
   return (
     <div className="glass-card rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] duration-200">
-      <h1>THis is campaigncard</h1>
       <img
         src={
           campaign.image ||
@@ -123,7 +122,7 @@ export function CampaignCard({
             </div>
           </div>
         )}
-
+        {/* 
         <div className="pt-4 space-y-3">
           {account?.toLowerCase() === campaign.owner.toLowerCase() &&
             !campaign.claimed &&
@@ -154,7 +153,7 @@ export function CampaignCard({
           >
             <span className="font-medium">{getCampaignStatus(campaign)}</span>
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

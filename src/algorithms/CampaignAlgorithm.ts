@@ -5,7 +5,7 @@ export interface SimilarityScore {
   details: {
     target: number;
     deadline: number;
-    progress: number;
+    category: number;
   };
 }
 
@@ -17,6 +17,8 @@ export interface CampaignWithSimilarity extends Campaign {
 }
 
 export class CampaignAlgorithms {
+  private static SIMILARITY_THRESHOLD = 0.7; // 70% similarity threshold
+
   static findSimilarCampaigns(campaigns: Campaign[], targetCampaign: Campaign, limit = 3): CampaignWithSimilarity[] {
     if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return [];
@@ -52,10 +54,15 @@ export class CampaignAlgorithms {
       const details = {
         target: this.calculateTargetSimilarity(campaign, otherCampaign),
         deadline: this.calculateDeadlineSimilarity(campaign, otherCampaign),
-        progress: this.calculateProgressSimilarity(campaign, otherCampaign)
+        category: this.calculateCategorySimilarity(campaign, otherCampaign)
       };
 
-      const score = (details.target + details.deadline + details.progress) / 3;
+      // Weighted similarity calculation
+      const score = (
+        details.target * 0.4 +
+        details.deadline * 0.3 +
+        details.category * 0.3
+      );
 
       similarityScores[otherCampaign.id] = {
         score,
@@ -89,29 +96,32 @@ export class CampaignAlgorithms {
     return 1 - Math.min(difference / maxTimeframe, 1);
   }
 
-  private static calculateProgressSimilarity(campaign1: Campaign, campaign2: Campaign): number {
-    const progress1 = parseFloat(campaign1.amountCollected) / parseFloat(campaign1.target);
-    const progress2 = parseFloat(campaign2.amountCollected) / parseFloat(campaign2.target);
-    return 1 - Math.abs(progress1 - progress2);
+  private static calculateCategorySimilarity(campaign1: Campaign, campaign2: Campaign): number {
+    // Using title and description for category similarity
+    const words1 = (campaign1.title + " " + campaign1.description).toLowerCase().split(/\s+/);
+    const words2 = (campaign2.title + " " + campaign2.description).toLowerCase().split(/\s+/);
+    
+    const commonWords = words1.filter(word => words2.includes(word));
+    return commonWords.length / Math.max(words1.length, words2.length);
   }
 
   static explainSimilarity(campaign1: Campaign, campaign2: Campaign): string {
     const details = {
       target: this.calculateTargetSimilarity(campaign1, campaign2),
       deadline: this.calculateDeadlineSimilarity(campaign1, campaign2),
-      progress: this.calculateProgressSimilarity(campaign1, campaign2)
+      category: this.calculateCategorySimilarity(campaign1, campaign2)
     };
 
     return `
       These campaigns are similar because:
       ${details.target > 0.8 ? '- They have very similar target amounts\n' : ''}
       ${details.deadline > 0.8 ? '- Their deadlines are close to each other\n' : ''}
-      ${details.progress > 0.8 ? '- They have similar progress rates\n' : ''}
+      ${details.category > 0.8 ? '- They belong to similar categories\n' : ''}
       
       Similarity Breakdown:
       - Target Amount Match: ${(details.target * 100).toFixed(1)}%
       - Deadline Match: ${(details.deadline * 100).toFixed(1)}%
-      - Progress Match: ${(details.progress * 100).toFixed(1)}%
+      - Category Match: ${(details.category * 100).toFixed(1)}%
     `;
   }
 }

@@ -36,6 +36,42 @@
       "artifacts": [
         "CrowdFunding"
       ]
+    },
+    "/home/nishanhere/work/donation-dapp/src/contracts/CrowdFunding.sol": {
+      "lastModificationDate": 1737857534777,
+      "contentHash": "add90ab3019312b6cdbc540218aefe2d",
+      "sourceName": "src/contracts/CrowdFunding.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "CrowdFunding"
+      ]
     }
   }
 }

@@ -14,20 +14,18 @@ export interface CampaignWithSimilarity extends Campaign {
     [key: number]: SimilarityScore;  // Campaign ID -> Similarity Score
   };
   topSimilar?: number[];  // Array of campaign IDs, sorted by similarity
+  groupId?: number; // Added to track which group the campaign belongs to
 }
 
 export class CampaignAlgorithms {
-  private static SIMILARITY_THRESHOLD = 0.7; // 70% similarity threshold
+  private static SIMILARITY_THRESHOLD = 0.7;
 
   static findSimilarCampaigns(campaigns: Campaign[], targetCampaign: Campaign, limit = 3): CampaignWithSimilarity[] {
     if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return [];
     }
 
-    // Calculate similarity scores for the target campaign
     const campaignWithScores = this.calculateSimilarityScores(targetCampaign, campaigns);
-    
-    // Get the top similar campaigns
     const topSimilar = campaignWithScores.topSimilar || [];
     
     return topSimilar
@@ -47,7 +45,6 @@ export class CampaignAlgorithms {
   static calculateSimilarityScores(campaign: Campaign, allCampaigns: Campaign[]): CampaignWithSimilarity {
     const similarityScores: { [key: number]: SimilarityScore } = {};
 
-    // Calculate similarity with all other campaigns
     allCampaigns.forEach(otherCampaign => {
       if (campaign.id === otherCampaign.id) return;
 
@@ -57,7 +54,6 @@ export class CampaignAlgorithms {
         category: this.calculateCategorySimilarity(campaign, otherCampaign)
       };
 
-      // Weighted similarity calculation
       const score = (
         details.target * 0.4 +
         details.deadline * 0.3 +
@@ -70,7 +66,6 @@ export class CampaignAlgorithms {
       };
     });
 
-    // Sort campaigns by similarity score
     const topSimilar = Object.entries(similarityScores)
       .sort(([, a], [, b]) => b.score - a.score)
       .map(([id]) => parseInt(id));
@@ -80,6 +75,94 @@ export class CampaignAlgorithms {
       similarityScores,
       topSimilar
     };
+  }
+
+  static groupSimilarCampaigns(campaigns: Campaign[]): Campaign[][] {
+    if (!Array.isArray(campaigns) || campaigns.length === 0) {
+      return [];
+    }
+
+    const campaignsWithSimilarity: CampaignWithSimilarity[] = campaigns.map(c => ({
+      ...c,
+      similarityScores: {},
+      groupId: undefined
+    }));
+
+    // Calculate similarity scores between all campaigns
+    for (let i = 0; i < campaignsWithSimilarity.length; i++) {
+      for (let j = i + 1; j < campaignsWithSimilarity.length; j++) {
+        const score = this.calculateOverallSimilarity(
+          campaignsWithSimilarity[i],
+          campaignsWithSimilarity[j]
+        );
+
+        campaignsWithSimilarity[i].similarityScores![campaignsWithSimilarity[j].id] = {
+          score,
+          details: {
+            target: this.calculateTargetSimilarity(campaignsWithSimilarity[i], campaignsWithSimilarity[j]),
+            deadline: this.calculateDeadlineSimilarity(campaignsWithSimilarity[i], campaignsWithSimilarity[j]),
+            category: this.calculateCategorySimilarity(campaignsWithSimilarity[i], campaignsWithSimilarity[j])
+          }
+        };
+
+        campaignsWithSimilarity[j].similarityScores![campaignsWithSimilarity[i].id] = {
+          score,
+          details: {
+            target: this.calculateTargetSimilarity(campaignsWithSimilarity[i], campaignsWithSimilarity[j]),
+            deadline: this.calculateDeadlineSimilarity(campaignsWithSimilarity[i], campaignsWithSimilarity[j]),
+            category: this.calculateCategorySimilarity(campaignsWithSimilarity[i], campaignsWithSimilarity[j])
+          }
+        };
+      }
+    }
+
+    // Create groups using a clustering approach
+    let currentGroupId = 1;
+    const groups: Campaign[][] = [];
+
+    for (const campaign of campaignsWithSimilarity) {
+      if (campaign.groupId) continue; // Skip if already in a group
+
+      const currentGroup: Campaign[] = [campaign];
+      campaign.groupId = currentGroupId;
+
+      // Find all similar campaigns for the current group
+      for (const otherCampaign of campaignsWithSimilarity) {
+        if (otherCampaign.groupId || otherCampaign.id === campaign.id) continue;
+
+        // Check if the campaign is similar to ALL campaigns in the current group
+        const isSimilarToAll = currentGroup.every(groupCampaign => {
+          const similarity = groupCampaign.similarityScores![otherCampaign.id]?.score || 0;
+          return similarity >= this.SIMILARITY_THRESHOLD;
+        });
+
+        if (isSimilarToAll) {
+          currentGroup.push(otherCampaign);
+          otherCampaign.groupId = currentGroupId;
+        }
+      }
+
+      if (currentGroup.length > 1) { // Only add groups with more than one campaign
+        groups.push(currentGroup);
+        currentGroupId++;
+      }
+    }
+
+    return groups;
+  }
+
+  private static calculateOverallSimilarity(campaign1: Campaign, campaign2: Campaign): number {
+    const details = {
+      target: this.calculateTargetSimilarity(campaign1, campaign2),
+      deadline: this.calculateDeadlineSimilarity(campaign1, campaign2),
+      category: this.calculateCategorySimilarity(campaign1, campaign2)
+    };
+
+    return (
+      details.target * 0.4 +
+      details.deadline * 0.3 +
+      details.category * 0.3
+    );
   }
 
   private static calculateTargetSimilarity(campaign1: Campaign, campaign2: Campaign): number {
@@ -97,7 +180,6 @@ export class CampaignAlgorithms {
   }
 
   private static calculateCategorySimilarity(campaign1: Campaign, campaign2: Campaign): number {
-    // Using title and description for category similarity
     const words1 = (campaign1.title + " " + campaign1.description).toLowerCase().split(/\s+/);
     const words2 = (campaign2.title + " " + campaign2.description).toLowerCase().split(/\s+/);
     
@@ -112,16 +194,6 @@ export class CampaignAlgorithms {
       category: this.calculateCategorySimilarity(campaign1, campaign2)
     };
 
-    return `
-      These campaigns are similar because:
-      ${details.target > 0.8 ? '- They have very similar target amounts\n' : ''}
-      ${details.deadline > 0.8 ? '- Their deadlines are close to each other\n' : ''}
-      ${details.category > 0.8 ? '- They belong to similar categories\n' : ''}
-      
-      Similarity Breakdown:
-      - Target Amount Match: ${(details.target * 100).toFixed(1)}%
-      - Deadline Match: ${(details.deadline * 100).toFixed(1)}%
-      - Category Match: ${(details.category * 100).toFixed(1)}%
-    `;
+   
   }
 }

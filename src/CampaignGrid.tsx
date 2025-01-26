@@ -23,80 +23,20 @@ export function CampaignGrid({
   getCampaignStatus,
   getTimeLeft,
 }: CampaignGridProps) {
-  // Group campaigns by similarity clusters
-  const groupCampaigns = () => {
-    if (!selectedCampaign) return { groups: [], other: campaigns };
+  // Group campaigns using the new grouping algorithm
+  const groupedCampaigns = CampaignAlgorithms.groupSimilarCampaigns(campaigns);
 
-    // Create similarity matrix for all campaigns
-    const similarityMatrix: { [key: string]: Campaign[] } = {};
-
-    // First pass: Calculate similarities and create initial groups
-    campaigns.forEach((campaign1) => {
-      campaigns.forEach((campaign2) => {
-        if (campaign1.id === campaign2.id) return;
-
-        const similar = CampaignAlgorithms.findSimilarCampaigns(
-          [campaign2],
-          campaign1,
-          1
-        );
-        const similarity = similar[0]?.similarityScore || 0;
-
-        // If similarity is above threshold, add to matrix
-        if (similarity >= 0.7) {
-          const groupKey = `group_${campaign1.id}`;
-          if (!similarityMatrix[groupKey]) {
-            similarityMatrix[groupKey] = [campaign1];
-          }
-          if (!similarityMatrix[groupKey].find((c) => c.id === campaign2.id)) {
-            similarityMatrix[groupKey].push(campaign2);
-          }
-        }
-      });
-    });
-
-    // Second pass: Merge overlapping groups
-    const mergedGroups = Object.values(similarityMatrix).reduce(
-      (acc, group) => {
-        const overlappingGroupIndex = acc.findIndex((existingGroup) =>
-          existingGroup.some((campaign1) =>
-            group.some((campaign2) => campaign1.id === campaign2.id)
-          )
-        );
-
-        if (overlappingGroupIndex >= 0) {
-          // Merge with existing group
-          group.forEach((campaign) => {
-            if (!acc[overlappingGroupIndex].find((c) => c.id === campaign.id)) {
-              acc[overlappingGroupIndex].push(campaign);
-            }
-          });
-        } else {
-          // Create new group
-          acc.push(group);
-        }
-
-        return acc;
-      },
-      [] as Campaign[][]
-    );
-
-    // Find campaigns that aren't in any group
-    const groupedCampaignIds = new Set(
-      mergedGroups.flat().map((campaign) => campaign.id)
-    );
-    const otherCampaigns = campaigns.filter(
-      (campaign) => !groupedCampaignIds.has(campaign.id)
-    );
-
-    return { groups: mergedGroups, other: otherCampaigns };
-  };
-
-  const { groups, other } = groupCampaigns();
+  // Find campaigns that aren't in any group
+  const groupedCampaignIds = new Set(
+    groupedCampaigns.flat().map((campaign) => campaign.id)
+  );
+  const otherCampaigns = campaigns.filter(
+    (campaign) => !groupedCampaignIds.has(campaign.id)
+  );
 
   return (
     <div className="space-y-12">
-      {groups.map((group, index) => (
+      {groupedCampaigns.map((group, index) => (
         <div key={index}>
           <h2 className="text-xl font-semibold mb-6 text-white mt-6">
             Campaign Group {index + 1}
@@ -119,13 +59,13 @@ export function CampaignGrid({
         </div>
       ))}
 
-      {other.length > 0 && (
+      {otherCampaigns.length > 0 && (
         <div>
           <h2 className="text-xl font-semibold mb-6 text-white mt-6">
             Other Campaigns
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {other.map((campaign) => (
+            {otherCampaigns.map((campaign) => (
               <CampaignCard
                 key={campaign.id}
                 campaign={campaign}
